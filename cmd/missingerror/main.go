@@ -1,8 +1,7 @@
 package main
 
 import (
-	"missingerror"
-
+	"github.com/mmmknt/missingerror"
 	"golang.org/x/tools/go/analysis/unitchecker"
 )
 

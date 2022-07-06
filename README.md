@@ -72,7 +72,5 @@ $ go install github.com/mmmknt/missingerror/cmd/missingerror@latest
 ## How to use
 
 ```
-$ go vet -vettool=$(which unuseparam) ./...
+$ go vet -vettool=$(which missingerror) ./...
 ```
-
-##  

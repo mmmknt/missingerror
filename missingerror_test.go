@@ -3,9 +3,8 @@ package missingerror_test
 import (
 	"testing"
 
-	"missingerror"
-
 	"github.com/gostaticanalysis/testutil"
+	"github.com/mmmknt/missingerror"
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 
