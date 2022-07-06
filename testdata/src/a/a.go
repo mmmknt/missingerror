@@ -1,8 +1,3 @@
-# missingerror
-
-`missingerror` finds errors witch are not returned from function.
-
-```go
 package a
 
 import (
@@ -61,18 +56,3 @@ func a(i int) error {
 func b() (bool, error) {
 	return true, nil
 }
-```
-
-## Install
-
-```
-$ go install github.com/mmmknt/missingerror/cmd/missingerror@latest
-```
-
-## How to use
-
-```
-$ go vet -vettool=$(which unuseparam) ./...
-```
-
-##  
