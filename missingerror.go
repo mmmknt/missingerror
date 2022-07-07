@@ -3,6 +3,7 @@ package missingerror
 import (
 	"go/ast"
 	"go/token"
+	"sort"
 
 	"github.com/gostaticanalysis/analysisutil"
 	"golang.org/x/tools/go/analysis"
@@ -107,9 +108,13 @@ func run(pass *analysis.Pass) (any, error) {
 			*/
 		}
 	})
+	// maybe sort these properly
 	for _, e := range handlingErrors {
-		pass.Reportf(e.Pos(), "error wasn't returned")
+		missingErros = append(missingErros, e)
 	}
+	sort.Slice(missingErros, func(i, j int) bool {
+		return missingErros[i].Pos() < missingErros[j].Pos()
+	})
 	for _, e := range missingErros {
 		pass.Reportf(e.Pos(), "error wasn't returned")
 	}
