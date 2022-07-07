@@ -3,6 +3,7 @@ package missingerror
 import (
 	"go/ast"
 	"go/token"
+	"go/types"
 	"sort"
 
 	"github.com/gostaticanalysis/analysisutil"
@@ -32,7 +33,7 @@ func run(pass *analysis.Pass) (any, error) {
 	}
 
 	handlingErrors := map[token.Pos]*ast.Ident{}
-	var missingErros []*ast.Ident
+	var missingErrors []*ast.Ident
 	inspect.Preorder(nodeFilter, func(n ast.Node) {
 		switch n := n.(type) {
 		case *ast.AssignStmt:
@@ -58,7 +59,7 @@ func run(pass *analysis.Pass) (any, error) {
 					} else if useObj := pass.TypesInfo.Uses[lh]; useObj != nil {
 						defPos := useObj.Pos()
 						if ident, exist := handlingErrors[defPos]; exist {
-							missingErros = append(missingErros, ident)
+							missingErrors = append(missingErrors, ident)
 						}
 						handlingErrors[defPos] = lh
 					}
@@ -75,49 +76,44 @@ func run(pass *analysis.Pass) (any, error) {
 					}
 					useObj := pass.TypesInfo.Uses[result]
 					delete(handlingErrors, useObj.Pos())
+				case *ast.CallExpr:
+					if wrappedErrorObj := wrappedError(pass, result); wrappedErrorObj != nil {
+						delete(handlingErrors, wrappedErrorObj.Pos())
+					}
 				}
 			}
-			/*
-				case *ast.Ident:
-					// 代入、宣言しているerror型の変数があれば、
-					// astのnodeを保持
-					// その際に、同じtype.Objectが登録されていたら、
-					// 既存のnodeをreturnしていないものとして保持
-					// astの解析でreturnしていたら、
-					// そこで返しているobjectのnodeを解放
-					// 最終的に保持しつづけているnodeがnot return
-					fmt.Println(n)
-					fmt.Println("ast pos:", n.Pos())
-					obj := pass.TypesInfo.ObjectOf(n)
-					if obj != nil {
-						fmt.Println("TypesInfo.ObjectOf:", n, obj)
-					}
-					defObj := pass.TypesInfo.Defs[n]
-					fmt.Println("Defs:", defObj)
-					if defObj != nil {
-						fmt.Println("Defs:", defObj.Type())
-						fmt.Println("Defs:", defObj.Pos())
-					}
-					useObj := pass.TypesInfo.Uses[n]
-					fmt.Println("Uses:", useObj)
-					if useObj != nil {
-						fmt.Println("Uses:", useObj.Type())
-						fmt.Println("Uses:", useObj.Pos())
-					}
-
-			*/
 		}
 	})
 	// maybe sort these properly
 	for _, e := range handlingErrors {
-		missingErros = append(missingErros, e)
+		missingErrors = append(missingErrors, e)
 	}
-	sort.Slice(missingErros, func(i, j int) bool {
-		return missingErros[i].Pos() < missingErros[j].Pos()
+	sort.Slice(missingErrors, func(i, j int) bool {
+		return missingErrors[i].Pos() < missingErrors[j].Pos()
 	})
-	for _, e := range missingErros {
+	for _, e := range missingErrors {
 		pass.Reportf(e.Pos(), "error wasn't returned")
 	}
 
 	return nil, nil
+}
+
+func wrappedError(pass *analysis.Pass, result *ast.CallExpr) types.Object {
+	switch f := result.Fun.(type) {
+	case *ast.SelectorExpr:
+		errorWrapperType := analysisutil.TypeOf(pass, "fmt", "Errorf")
+		typ := pass.TypesInfo.TypeOf(f)
+		if types.Identical(typ, errorWrapperType) {
+			for _, at := range result.Args {
+				switch at := at.(type) {
+				case *ast.Ident:
+					obj := pass.TypesInfo.ObjectOf(at)
+					if analysisutil.ImplementsError(obj.Type()) {
+						return obj
+					}
+				}
+			}
+		}
+	}
+	return nil
 }

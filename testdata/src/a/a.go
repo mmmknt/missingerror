@@ -41,7 +41,27 @@ func f() error {
 	_ = a(0)
 	_, _ = b()
 
-	// TODO wrapped error case
+	err6 := a(6)
+	if err6 != nil {
+		return fmt.Errorf("direct return: %w", err6)
+	}
+
+	err7 := a(7)
+	if err7 != nil {
+		return fmt.Errorf("direct return with no wrap: %+v", err7)
+	}
+
+	err8 := a(8) // want "error wasn't returned"
+	if err8 != nil {
+		err8 = fmt.Errorf("new error")
+		return err8
+	}
+	// TODO fmt.Errorfの引数に複数のerrorが指定されていた場合に、どういう扱いにする？
+
+	// TODO error型の変数の値をwrapしたerrorで上書いた時に、wrapされたerror変数と同一視するケース
+	// ext. err9 = fmt.Errorf("wrapped: %w", err9)
+
+	// TODO case of named return value
 
 	return nil
 }
