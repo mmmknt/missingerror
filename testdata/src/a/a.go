@@ -17,6 +17,7 @@ func f() error {
 	}
 
 	err3 := a(0) // want "error wasn't returned"
+	err3 = a(1)  // want "error wasn't returned"
 	err3 = a(2)  // OK
 	if err3 != nil {
 		return err3
@@ -75,4 +76,10 @@ func a(i int) error {
 
 func b() (bool, error) {
 	return true, nil
+}
+
+func c() (err error) {
+	err = errors.New("missing error") // want "error wasn't returned"
+	err = errors.New("named return")
+	return
 }
