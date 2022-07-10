@@ -62,8 +62,6 @@ func f() error {
 	// TODO error型の変数の値をwrapしたerrorで上書いた時に、wrapされたerror変数と同一視するケース
 	// ext. err9 = fmt.Errorf("wrapped: %w", err9)
 
-	// TODO case of named return value
-
 	return nil
 }
 
