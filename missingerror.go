@@ -25,6 +25,28 @@ var Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (any, error) {
+
+	namedReturnErrors := map[token.Pos]bool{}
+	for _, file := range pass.Files {
+		for _, decl := range file.Decls {
+			switch decl := decl.(type) {
+			case *ast.FuncDecl:
+				if decl.Type.Results == nil {
+					// skip when function returns nothing
+					continue
+				}
+				for _, result := range decl.Type.Results.List {
+					for _, name := range result.Names {
+						obj := pass.TypesInfo.ObjectOf(name)
+						if analysisutil.ImplementsError(obj.Type()) {
+							namedReturnErrors[obj.Pos()] = true
+						}
+					}
+				}
+			}
+		}
+	}
+
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 
 	nodeFilter := []ast.Node{
@@ -85,7 +107,11 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 	})
 	// maybe sort these properly
-	for _, e := range handlingErrors {
+	for defPos, e := range handlingErrors {
+		if returned := namedReturnErrors[defPos]; returned {
+			// returned as named return value
+			continue
+		}
 		missingErrors = append(missingErrors, e)
 	}
 	sort.Slice(missingErrors, func(i, j int) bool {

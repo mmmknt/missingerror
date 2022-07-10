@@ -17,6 +17,7 @@ func f() error {
 	}
 
 	err3 := a(0) // want "error wasn't returned"
+	err3 = a(1)  // want "error wasn't returned"
 	err3 = a(2)  // OK
 	if err3 != nil {
 		return err3
@@ -61,8 +62,6 @@ func f() error {
 	// TODO error型の変数の値をwrapしたerrorで上書いた時に、wrapされたerror変数と同一視するケース
 	// ext. err9 = fmt.Errorf("wrapped: %w", err9)
 
-	// TODO case of named return value
-
 	return nil
 }
 
@@ -75,4 +74,10 @@ func a(i int) error {
 
 func b() (bool, error) {
 	return true, nil
+}
+
+func c() (err error) {
+	err = errors.New("missing error") // want "error wasn't returned"
+	err = errors.New("named return")
+	return
 }
