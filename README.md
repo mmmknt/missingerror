@@ -8,6 +8,9 @@ package a
 import (
 	"errors"
 	"fmt"
+	fmtalias "fmt"
+
+	"a/helper"
 )
 
 func f() error {
@@ -62,10 +65,16 @@ func f() error {
 		err8 = fmt.Errorf("new error")
 		return err8
 	}
-	// TODO fmt.Errorfの引数に複数のerrorが指定されていた場合に、どういう扱いにする？
 
-	// TODO error型の変数の値をwrapしたerrorで上書いた時に、wrapされたerror変数と同一視するケース
-	// ext. err9 = fmt.Errorf("wrapped: %w", err9)
+	err9 := a(9)
+	if err9 != nil {
+		return fmtalias.Errorf("custom wrapper: %w", err9)
+	}
+
+	err10 := a(10)
+	if err10 != nil {
+		return helper.Wrap(err10)
+	}
 
 	return nil
 }
@@ -86,6 +95,15 @@ func c() (err error) {
 	err = errors.New("named return")
 	return
 }
+---
+package helper
+
+import "fmt"
+
+func Wrap(err error) error {
+	return fmt.Errorf("wrapped: %w", err)
+}
+
 ```
 
 ## Install
@@ -97,5 +115,5 @@ $ go install github.com/mmmknt/missingerror/cmd/missingerror@latest
 ## How to use
 
 ```
-$ go vet -vettool=$(which missingerror) ./...
+$ go vet -vettool=$(which missingerror) -wrappers fmt.Errorf,a/helper.Wrap ./...
 ```
