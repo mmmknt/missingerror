@@ -115,5 +115,5 @@ $ go install github.com/mmmknt/missingerror/cmd/missingerror@latest
 ## How to use
 
 ```
-$ go vet -vettool=$(which missingerror) -wrappers fmt.Errorf,a/helper.Wrap ./...
+$ go vet -vettool=$(which missingerror) -missingerror.wrappers=fmt.Errorf,a/helper.Wrap ./...
 ```
