@@ -1,10 +1,12 @@
 package missingerror
 
 import (
+	"errors"
 	"go/ast"
 	"go/token"
 	"go/types"
 	"sort"
+	"strings"
 
 	"github.com/gostaticanalysis/analysisutil"
 	"golang.org/x/tools/go/analysis"
@@ -24,7 +26,22 @@ var Analyzer = &analysis.Analyzer{
 	},
 }
 
+var wrappers string // -wrappers flag
+
+func init() {
+	Analyzer.Flags.StringVar(&wrappers, "wrappers", "fmt.Errof",
+		"comma-separated list of functions which wrap error")
+}
+
 func run(pass *analysis.Pass) (any, error) {
+	var wrapperTypes []types.Type
+	for _, ws := range strings.Split(wrappers, ",") {
+		split := strings.Split(ws, ".")
+		if len(split) != 2 {
+			return nil, errors.New("invalid flag. wrapper function must be <package>.<name> format")
+		}
+		wrapperTypes = append(wrapperTypes, analysisutil.TypeOf(pass, split[0], split[1]))
+	}
 
 	namedReturnErrors := map[token.Pos]bool{}
 	for _, file := range pass.Files {
@@ -99,7 +116,7 @@ func run(pass *analysis.Pass) (any, error) {
 					useObj := pass.TypesInfo.Uses[result]
 					delete(handlingErrors, useObj.Pos())
 				case *ast.CallExpr:
-					if wrappedErrorObj := wrappedError(pass, result); wrappedErrorObj != nil {
+					if wrappedErrorObj := wrappedError(pass, result, wrapperTypes); wrappedErrorObj != nil {
 						delete(handlingErrors, wrappedErrorObj.Pos())
 					}
 				}
@@ -124,12 +141,11 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-func wrappedError(pass *analysis.Pass, result *ast.CallExpr) types.Object {
+func wrappedError(pass *analysis.Pass, result *ast.CallExpr, wrapperTypes []types.Type) types.Object {
 	switch f := result.Fun.(type) {
 	case *ast.SelectorExpr:
-		errorWrapperType := analysisutil.TypeOf(pass, "fmt", "Errorf")
 		typ := pass.TypesInfo.TypeOf(f)
-		if types.Identical(typ, errorWrapperType) {
+		if isWrapperFunction(typ, wrapperTypes) {
 			for _, at := range result.Args {
 				switch at := at.(type) {
 				case *ast.Ident:
@@ -142,4 +158,13 @@ func wrappedError(pass *analysis.Pass, result *ast.CallExpr) types.Object {
 		}
 	}
 	return nil
+}
+
+func isWrapperFunction(typ types.Type, wrappers []types.Type) bool {
+	for _, w := range wrappers {
+		if types.Identical(typ, w) {
+			return true
+		}
+	}
+	return false
 }
