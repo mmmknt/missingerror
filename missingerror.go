@@ -29,7 +29,7 @@ var Analyzer = &analysis.Analyzer{
 var wrappers string // -wrappers flag
 
 func init() {
-	Analyzer.Flags.StringVar(&wrappers, "wrappers", "fmt.Errof",
+	Analyzer.Flags.StringVar(&wrappers, "wrappers", "fmt.Errorf",
 		"comma-separated list of functions which wrap error")
 }
 
