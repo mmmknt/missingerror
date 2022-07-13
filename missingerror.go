@@ -76,7 +76,12 @@ func run(pass *analysis.Pass) (any, error) {
 	inspect.Preorder(nodeFilter, func(n ast.Node) {
 		switch n := n.(type) {
 		case *ast.AssignStmt:
+			// 左辺が複数の場合に、右辺にエラーがあるケースで複数回チェックしないようにする
+			missing := false
 			for _, lh := range n.Lhs {
+				if missing {
+					break
+				}
 				switch lh := lh.(type) {
 				case *ast.Ident:
 					// 変数にerrorインタフェースを実装した型の値を代入する場合、
@@ -87,6 +92,22 @@ func run(pass *analysis.Pass) (any, error) {
 					obj := pass.TypesInfo.ObjectOf(lh)
 					// skip when blank identifier
 					if obj == nil {
+						switch rh := n.Rhs[0].(type) {
+						case *ast.CallExpr:
+							if tv, ok := pass.TypesInfo.Types[rh.Fun]; ok {
+								switch typ := tv.Type.(type) {
+								case *types.Signature:
+									results := typ.Results()
+									for i := 0; i < results.Len(); i++ {
+										obj := results.At(i)
+										if analysisutil.ImplementsError(obj.Type()) {
+											missingErrors = append(missingErrors, lh)
+											missing = true
+										}
+									}
+								}
+							}
+						}
 						continue
 					}
 					ok := analysisutil.ImplementsError(obj.Type())
@@ -99,6 +120,7 @@ func run(pass *analysis.Pass) (any, error) {
 						defPos := useObj.Pos()
 						if ident, exist := handlingErrors[defPos]; exist {
 							missingErrors = append(missingErrors, ident)
+							missing = true
 						}
 						handlingErrors[defPos] = lh
 					}
