@@ -46,9 +46,8 @@ func f() error {
 		// nothing to do
 	}
 
-	// TODO check blank identifier
-	_ = a(0)
-	_, _ = b()
+	_ = fmt.Errorf("blank identifier") // want "error wasn't returned"
+	_, _ = b() // want "error wasn't returned"
 
 	err6 := a(6)
 	if err6 != nil {
@@ -95,6 +94,7 @@ func c() (err error) {
 	err = errors.New("named return")
 	return
 }
+
 ---
 package helper
 
