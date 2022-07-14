@@ -42,7 +42,7 @@ func f() error {
 	}
 
 	_ = fmt.Errorf("blank identifier") // want "error wasn't returned"
-	_, _ = b() // want "error wasn't returned"
+	_, _ = b()                         // want "error wasn't returned"
 
 	err6 := a(6)
 	if err6 != nil {

@@ -78,7 +78,7 @@ func run(pass *analysis.Pass) (any, error) {
 		case *ast.AssignStmt:
 			// 左辺が複数の場合に、右辺にエラーがあるケースで複数回チェックしないようにする
 			missing := false
-			for _, lh := range n.Lhs {
+			for i, lh := range n.Lhs {
 				if missing {
 					break
 				}
@@ -90,23 +90,10 @@ func run(pass *analysis.Pass) (any, error) {
 					// ハンドリングする前に値が上書きれたとみなして、
 					// 既存の値はハンドルされないエラーとして保持する
 					obj := pass.TypesInfo.ObjectOf(lh)
-					// skip when blank identifier
 					if obj == nil {
-						switch rh := n.Rhs[0].(type) {
-						case *ast.CallExpr:
-							if tv, ok := pass.TypesInfo.Types[rh.Fun]; ok {
-								switch typ := tv.Type.(type) {
-								case *types.Signature:
-									results := typ.Results()
-									for i := 0; i < results.Len(); i++ {
-										obj := results.At(i)
-										if analysisutil.ImplementsError(obj.Type()) {
-											missingErrors = append(missingErrors, lh)
-											missing = true
-										}
-									}
-								}
-							}
+						typ := getAssignedType(pass, n, i)
+						if analysisutil.ImplementsError(typ) {
+							missingErrors = append(missingErrors, lh)
 						}
 						continue
 					}
@@ -161,6 +148,20 @@ func run(pass *analysis.Pass) (any, error) {
 	}
 
 	return nil, nil
+}
+
+func getAssignedType(pass *analysis.Pass, n *ast.AssignStmt, index int) types.Type {
+	switch rh := n.Rhs[0].(type) {
+	case *ast.CallExpr:
+		if tv, ok := pass.TypesInfo.Types[rh.Fun]; ok {
+			switch typ := tv.Type.(type) {
+			case *types.Signature:
+				results := typ.Results()
+				return results.At(index).Type()
+			}
+		}
+	}
+	return nil
 }
 
 func wrappedError(pass *analysis.Pass, result *ast.CallExpr, wrapperTypes []types.Type) types.Object {
